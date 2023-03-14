@@ -1,0 +1,9 @@
+[Service]
+# WorkingDirectory=
+ExecStart=/var/www/sds/data/packages/romkamix/websocket-server/start.sh
+Restart=off
+# on-failure
+StandardError=syslog
+
+[Install]
+WantedBy=multi-user.target
