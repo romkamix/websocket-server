@@ -1,16 +1,16 @@
 require("dotenv").config();
 
-const fs = require("fs");
-
-const domain = process.env.DOMAIN,
+const logger = require("./modules/_logger"),
+  fs = require("fs"),
+  domain = process.env.DOMAIN,
   key = fs
     .readdirSync(process.env.CERT_DIR)
     .sort()
-    .find((e) => e.match(new RegExp(`${domain}.*\.key`, "g"))),
+    .find((e) => e.match(new RegExp(`^${domain}.*\.key`, "g"))),
   cert = fs
     .readdirSync(process.env.CERT_DIR)
     .sort()
-    .find((e) => e.match(new RegExp(`${domain}.*\.crt`, "g"))),
+    .find((e) => e.match(new RegExp(`^${domain}.*\.crt`, "g"))),
   httpServer = require("https").createServer({
     key:
       key !== undefined
@@ -23,12 +23,17 @@ const domain = process.env.DOMAIN,
   }),
   io = require("socket.io")(httpServer, {
     cors: {
-      origin: `https://${domain}`,
+      origin: [
+        `https://${domain}`,
+        "http://dev.i-sds.ru",
+        "http://dev.i-sds.ru:8090",
+      ],
       methods: ["GET"],
     },
   }),
-  Redis = require("ioredis"),
-  redis = new Redis();
+  redis = new (require("ioredis"))();
+
+console.log(key, cert);
 
 redis.psubscribe("*", function (error, count) {
   //
@@ -36,7 +41,10 @@ redis.psubscribe("*", function (error, count) {
 
 redis.on("pmessage", function (pattern, channel, message) {
   message = JSON.parse(message);
-  io.emit(channel + ":" + message.event, message.data);
+  io.emit(`${channel}:${message.event}`, message.data);
+  console.log(`${channel}:${message.event}`);
+
+  logger.info("Hello again distributed logs");
 });
 
 httpServer.listen(6001);
